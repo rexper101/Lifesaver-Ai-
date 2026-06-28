@@ -604,7 +604,328 @@ function applyThemeState(){
   if(sun) sun.classList.toggle('lit',!isDark);
 }
 
+// ── API KEY ──
+function showApiModal(){document.getElementById('api-modal').classList.remove('hidden');document.getElementById('modal-key').value=geminiKey||'';updateModalStatus();}
+function hideApiModal(){document.getElementById('api-modal').classList.add('hidden');}
+function saveApiKey(){
+  const k=document.getElementById('modal-key').value.trim();
+  geminiKey=k; isDemo=!k;
+  localStorage.setItem('ls_key',k);
+  initGemini();
+  updateApiStatus();
+  hideApiModal();
+  toast(k?'✓ Gemini API key saved — live AI active!':'Running in demo mode','success');
+}
+function updateApiStatus(){
+  const nb=document.getElementById('api-nb');
+  if(nb){nb.textContent=isDemo?'Demo':'✓';nb.className=isDemo?'nb nb-w':'nb nb-g';}
+  const badge=document.getElementById('drawer-model-badge');
+  if(badge){badge.textContent=isDemo?'Demo mode':'Gemini 2.0 Flash';badge.className=isDemo?'drawer-model demo':'drawer-model';}
+  updateModalStatus();
+}
+function updateModalStatus(){
+  const dot=document.getElementById('modal-dot');
+  const txt=document.getElementById('modal-status-text');
+  if(dot) dot.className='api-dot'+(geminiKey?' ok':'');
+  if(txt) txt.textContent=geminiKey?'Live Gemini AI active ✓':'No key — running in demo mode';
+}
 
+// ── VIEWS ──
+function setView(v,el){
+  currentView=v;
+  document.querySelectorAll('.nav-item,.mobile-nav-item').forEach(x=>x.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const titles={dashboard:'Dashboard',all:'All Tasks',urgent:'Urgent Tasks',today:"Today's Tasks",done:'Completed',goals:'My Goals'};
+  document.getElementById('view-title').textContent=titles[v]||'Dashboard';
+  renderView();
+}
+
+function renderView(){
+  const c=document.getElementById('content');
+  if(currentView==='goals'){renderGoals(c);return;}
+  let filter=null;
+  const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
+  if(currentView==='urgent') filter=t=>!t.done&&(t.priority==='urgent'||new Date(t.deadline)<now);
+  else if(currentView==='today') filter=t=>!t.done&&new Date(t.deadline)<=todayEnd;
+  else if(currentView==='done') filter=t=>t.done;
+  else if(currentView==='all') filter=t=>!t.done;
+  renderDashboard(c,filter);
+}
+
+function renderDashboard(c,filter=null){
+  const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
+  const urgentT=tasks.filter(t=>!t.done&&(t.priority==='urgent'||new Date(t.deadline)<now));
+  const todayT=tasks.filter(t=>!t.done&&new Date(t.deadline)<=todayEnd);
+  const doneT=tasks.filter(t=>t.done);
+  const pending=tasks.filter(t=>!t.done);
+  let html='';
+  if(!filter){
+    if(isDemo) html+=`<div class="demo-banner"><i class="ti ti-info-circle"></i> Running in <strong>Demo mode</strong> — AI responses are pre-built. <a onclick="showApiModal()">Add Gemini key</a> for live AI.</div>`;
+    if(pending.length===0&&doneT.length>0) html+=`<div class="complete-banner"><i class="ti ti-confetti"></i><div><div class="complete-banner-text">All tasks completed! 🎉</div><div class="complete-banner-sub">Incredible work today, ${userName}!</div></div></div>`;
+    html+=`<div class="stats-row">
+      <div class="stat"><div class="stat-label"><i class="ti ti-alert-triangle"></i> Urgent</div><div class="stat-value sv-r">${urgentT.length}</div><div class="stat-sub">needs action now</div></div>
+      <div class="stat"><div class="stat-label"><i class="ti ti-calendar-event"></i> Due today</div><div class="stat-value sv-a">${todayT.length}</div><div class="stat-sub">before midnight</div></div>
+      <div class="stat"><div class="stat-label"><i class="ti ti-circle-check"></i> Completed</div><div class="stat-value sv-g">${doneT.length}</div><div class="stat-sub">great progress!</div></div>
+      <div class="stat"><div class="stat-label"><i class="ti ti-flame"></i> Streak</div><div class="stat-value sv-b">${streak}</div><div class="stat-sub">days in a row 🔥</div></div>
+    </div>${renderCalStrip()}`;
+  }
+  html+=`<div class="add-form" id="add-form">
+    <input id="new-title" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')addTask()"/>
+    <div class="form-row">
+      <select id="new-priority"><option value="urgent">🔴 Urgent</option><option value="high" selected>🟡 High</option><option value="low">🟢 Low</option></select>
+      <select id="new-cat"><option>Work</option><option>Study</option><option>Personal</option><option>Finance</option><option>Health</option></select>
+      <input id="new-dl" type="datetime-local" style="flex:1.4"/>
+    </div>
+    <div class="form-btns"><button onclick="closeForm()">Cancel</button><button onclick="addTask()">Add task</button></div>
+  </div>`;
+  const filtered=filter?tasks.filter(filter):tasks.filter(t=>!t.done);
+  if(!filter){
+    const u=filtered.filter(t=>t.priority==='urgent'||new Date(t.deadline)<now);
+    const td=filtered.filter(t=>!u.includes(t)&&new Date(t.deadline)<=todayEnd);
+    const up=filtered.filter(t=>!u.includes(t)&&!td.includes(t));
+    if(u.length) html+=`<div class="section-head">Urgent & overdue</div><div class="task-group">${u.map(buildCard).join('')}</div>`;
+    if(td.length) html+=`<div class="section-head">Today</div><div class="task-group">${td.map(buildCard).join('')}</div>`;
+    if(up.length) html+=`<div class="section-head">Upcoming</div><div class="task-group">${up.map(buildCard).join('')}</div>`;
+    if(doneT.length) html+=`<div class="section-head">Done</div><div class="task-group">${doneT.map(buildCard).join('')}</div>`;
+    if(!filtered.length&&!doneT.length) html+=`<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">No tasks yet — press N to add one!</div></div>`;
+  } else {
+    html+=filtered.length?`<div class="task-group">${filtered.map(buildCard).join('')}</div>`:`<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">Nothing here!</div></div>`;
+  }
+  c.innerHTML=html;
+  updateBadges();
+}
+
+function renderCalStrip(){
+  let html='<div class="cal-strip">';
+  for(let i=-2;i<=7;i++){
+    const d=new Date();d.setDate(now.getDate()+i);
+    const isToday=i===0;
+    const ds=new Date(d);ds.setHours(0,0,0,0);
+    const de=new Date(d);de.setHours(23,59,59,999);
+    const has=tasks.some(t=>!t.done&&new Date(t.deadline)>=ds&&new Date(t.deadline)<=de);
+    html+=`<div class="cal-day ${isToday?'today':''} ${has&&!isToday?'has-task':''}">
+      <div class="cal-num">${d.getDate()}</div>
+      <div class="cal-lbl">${d.toLocaleDateString('en',{weekday:'short'})}</div>
+      <div class="cal-dot ${has?'':'hide'}"></div>
+    </div>`;
+  }
+  return html+'</div>';
+}
+
+function renderGoals(c){
+  let html=`<div class="section-head">Active Goals</div><div class="goals-row">`;
+  goals.forEach((g,i)=>{
+    html+=`<div class="goal-card">
+      <div class="goal-name"><i class="ti ${g.icon}"></i> ${g.name}</div>
+      <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${g.progress}%"></div></div>
+      <div class="goal-meta"><span>${g.progress}% · ${g.target}</span><span class="goal-edit" onclick="editGoal(${i})">Edit %</span></div>
+    </div>`;
+  });
+  c.innerHTML=html+'</div>';
+}
+
+function editGoal(i){
+  const val=prompt(`Update progress for "${goals[i].name}" (0–100):`,goals[i].progress);
+  if(val===null) return;
+  const n=Math.min(100,Math.max(0,parseInt(val)||0));
+  goals[i].progress=n;
+  if(n===100) toast(`🎉 "${goals[i].name}" completed!`,'success');
+  renderGoals(document.getElementById('content'));
+}
+
+function buildCard(task){
+  const dl=new Date(task.deadline);
+  const diff=(dl-now)/60000;
+  const warn=!task.done&&diff<120;
+  let dlLabel='';
+  if(task.done) dlLabel=dl.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  else if(diff<0) dlLabel=`Overdue by ${Math.round(Math.abs(diff/60))}h`;
+  else if(diff<60) dlLabel=`In ${Math.round(diff)} min`;
+  else if(diff<1440) dlLabel=`In ${Math.round(diff/60)}h`;
+  else dlLabel=dl.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  return `<div class="task" id="tk${task.id}">
+    <div class="task-check ${task.done?'done':''}" onclick="toggle(${task.id})">${task.done?'<i class="ti ti-check"></i>':''}</div>
+    <div class="task-body">
+      <div class="task-title ${task.done?'done':''}">${task.title}</div>
+      <div class="task-meta">
+        <span class="pill ${task.priority}">${task.priority}</span>
+        <span class="pill cat">${task.cat}</span>
+        <span class="task-time ${warn?'warn':''}"><i class="ti ti-clock"></i> ${dlLabel}</span>
+      </div>
+      ${task.hint?`<div class="task-hint"><i class="ti ti-sparkles"></i> ${task.hint}</div>`:''}
+      <div class="task-actions">
+        <button class="task-act-btn" onclick="askAIAbout(${task.id})"><i class="ti ti-robot"></i> AI help</button>
+        <button class="task-act-btn" onclick="deleteTask(${task.id})"><i class="ti ti-trash"></i> Remove</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateBadges(){
+  const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
+  const u=tasks.filter(t=>!t.done&&(t.priority==='urgent'||new Date(t.deadline)<now)).length;
+  const td=tasks.filter(t=>!t.done&&new Date(t.deadline)<=todayEnd).length;
+  const d=tasks.filter(t=>t.done).length;
+  const total=tasks.filter(t=>!t.done).length;
+  [['nb-all',total],['nb-urg',u],['nb-tod',td],['nb-done',d]].forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=v});
+  document.getElementById('sb-streak').textContent=streak+'🔥';
+}
+
+// ── TASK ACTIONS ──
+function toggle(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  t.done=!t.done;
+  if(t.done){streak++;localStorage.setItem('ls_streak',streak);toast(`✅ Done: "${t.title.slice(0,30)}"...`,'success');sendNotif('Task Complete!',`"${t.title.slice(0,40)}" ✓`);}
+  saveTasks();renderView();
+}
+function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);saveTasks();renderView();toast('Task removed','info');}
+function openForm(){
+  // ensure we're on dashboard
+  if(currentView!=='dashboard'&&currentView!=='all') setView('dashboard',document.querySelector('.nav-item'));
+  setTimeout(()=>{
+    const f=document.getElementById('add-form');
+    if(f){f.classList.add('open');setTimeout(()=>document.getElementById('new-title')?.focus(),50);}
+  },currentView!=='dashboard'?100:0);
+}
+function closeForm(){const f=document.getElementById('add-form');if(f)f.classList.remove('open');}
+function addTask(){
+  const title=document.getElementById('new-title')?.value.trim();if(!title){toast('Enter a task title','warn');return;}
+  const dl=document.getElementById('new-dl')?.value;
+  tasks.unshift({id:nextId++,title,priority:document.getElementById('new-priority').value,cat:document.getElementById('new-cat').value,deadline:dl?new Date(dl):tomorrow(),done:false,hint:''});
+  document.getElementById('new-title').value='';closeForm();saveTasks();renderView();toast('Task added ✓','success');
+}
+function toggleHabit(i){
+  const el=document.getElementById('h'+i);const v=el.style.display==='none';
+  el.style.display=v?'inline-flex':'none';
+  if(v){streak++;localStorage.setItem('ls_streak',streak);updateBadges();toast('Habit done! 🔥','success');}
+}
+
+// ── AI ──
+function toggleDrawer(){drawerOpen=!drawerOpen;document.getElementById('ai-drawer').classList.toggle('open',drawerOpen);}
+function addMsgRow(text,isUser){
+  const msgs=document.getElementById('msgs');
+  const row=document.createElement('div');row.className='msg-row'+(isUser?' user':'');
+  const av=document.createElement('div');av.className='msg-avatar'+(isUser?' user-av':'');
+  av.innerHTML=isUser?'<i class="ti ti-user"></i>':'<i class="ti ti-robot"></i>';
+  const b=document.createElement('div');b.className='msg '+(isUser?'msg-user':'msg-ai');
+  b.style.whiteSpace='pre-wrap';b.textContent=text;
+  isUser?(row.appendChild(b),row.appendChild(av)):(row.appendChild(av),row.appendChild(b));
+  msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;
+}
+function showThinking(){
+  const msgs=document.getElementById('msgs');
+  const row=document.createElement('div');row.className='msg-row';row.id='thinking';
+  const av=document.createElement('div');av.className='msg-avatar';av.innerHTML='<i class="ti ti-robot"></i>';
+  const dots=document.createElement('div');dots.className='msg-loading';
+  dots.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  row.appendChild(av);row.appendChild(dots);msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;
+}
+function hideThinking(){const el=document.getElementById('thinking');if(el)el.remove();}
+
+async function callAI(prompt){
+  showThinking();
+  // demo mode — return pre-built response after fake delay
+  if(isDemo||!geminiModel){
+    await new Promise(r=>setTimeout(r,1200));
+    hideThinking();
+    addMsgRow(getDemoResponse(prompt),false);
+    return;
+  }
+  try{
+    const result=await geminiModel.generateContent(`You are LifeSaver AI, a warm and concise productivity assistant. Keep replies to 2-3 sentences unless listing steps. Be direct and motivating.\n\n${prompt}`);
+    hideThinking();
+    addMsgRow(result.response.text(),false);
+  }catch(e){
+    hideThinking();
+    // fallback to demo if key fails
+    addMsgRow(getDemoResponse(prompt)+'\n\n⚠️ (Gemini API error — showing demo response. Check your key in Settings.)',false);
+  }
+}
+
+async function aiPrioritize(){
+  const pending=tasks.filter(t=>!t.done);
+  if(!pending.length){if(!drawerOpen)toggleDrawer();addMsgRow("You're all caught up! No pending tasks. 🎉",false);return;}
+  if(!drawerOpen)toggleDrawer();
+  addMsgRow('Prioritize my tasks',true);
+  const list=pending.map((t,i)=>`${i+1}. "${t.title}" | ${t.priority} | due ${new Date(t.deadline).toLocaleString()} | ${t.cat}`).join('\n');
+  showThinking();
+  const fullPrompt=`You are LifeSaver AI. Give a 2-sentence action plan, then top 3 tasks each with a one-line tip. Max 6 sentences total.\n\nTasks:\n${list}\n\nNow: ${now.toLocaleString()}`;
+  let reply='';
+  if(isDemo||!geminiModel){
+    await new Promise(r=>setTimeout(r,1400));
+    hideThinking();
+    reply=DEMO_RESPONSES.prioritize;
+    addMsgRow(reply,false);
+  } else {
+    try{
+      const result=await geminiModel.generateContent(fullPrompt);
+      hideThinking();
+      reply=result.response.text();
+      addMsgRow(reply,false);
+    }catch(e){
+      hideThinking();
+      reply=DEMO_RESPONSES.prioritize;
+      addMsgRow(reply+'\n\n⚠️ (Showing demo — check your Gemini API key in Settings.)',false);
+    }
+  }
+  const lines=reply.split('\n').filter(l=>l.trim());
+  pending.slice(0,3).forEach((t,i)=>{if(lines[i])t.hint=lines[i].replace(/^\d+\.\s*/,'').slice(0,90);});
+  saveTasks();renderView();toast('✨ AI plan ready!','success');
+}
+
+async function askAIAbout(id){
+  const task=tasks.find(t=>t.id===id);if(!task)return;
+  if(!drawerOpen)toggleDrawer();
+  addMsgRow(`Help me complete: "${task.title}"`,true);
+  callAI(`Give 3 concrete steps to complete this task efficiently: "${task.title}" (${task.cat}, ${task.priority} priority, due ${new Date(task.deadline).toLocaleString()})`);
+}
+function quick(text){
+  if(!drawerOpen)toggleDrawer();addMsgRow(text,true);
+  const p=tasks.filter(t=>!t.done).map(t=>`- ${t.title} (${t.priority}, due ${new Date(t.deadline).toLocaleString()})`).join('\n');
+  callAI(text+(p?`\n\nMy tasks:\n${p}`:''));
+}
+function send(){
+  const el=document.getElementById('chat-in');const v=el.value.trim();if(!v)return;el.value='';
+  addMsgRow(v,true);
+  const p=tasks.filter(t=>!t.done).map(t=>`- ${t.title} (${t.priority})`).join('\n');
+  callAI(v+(p?`\n\nMy tasks:\n${p}`:''));
+}
+
+// ── VOICE ──
+function toggleVoice(){
+  const btn=document.getElementById('voice-btn');
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){toast('Voice not supported in this browser','warn');return;}
+  if(isListening){isListening=false;btn.classList.remove('listening');return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();rec.lang='en-IN';
+  rec.onstart=()=>{isListening=true;btn.classList.add('listening');toast('🎤 Listening...','info');};
+  rec.onresult=e=>{document.getElementById('chat-in').value=e.results[0][0].transcript;isListening=false;btn.classList.remove('listening');};
+  rec.onerror=()=>{isListening=false;btn.classList.remove('listening');};
+  rec.onend=()=>{isListening=false;btn.classList.remove('listening');};
+  rec.start();
+}
+
+// ── NOTIFICATIONS ──
+function requestNotifPermission(){if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}
+function sendNotif(title,body){
+  if('Notification' in window&&Notification.permission==='granted')
+    new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚡</text></svg>'});
+}
+
+// ── DEADLINE CHECKER ──
+function checkDeadlines(){
+  tasks.filter(t=>!t.done).forEach(t=>{
+    const diff=(new Date(t.deadline)-now)/60000;
+    if(diff>0&&diff<30&&!t._warned){t._warned=true;toast(`⚠ "${t.title.slice(0,28)}..." in ${Math.round(diff)} min!`,'warn');sendNotif('Deadline Alert!',`"${t.title.slice(0,40)}" is due in ${Math.round(diff)} min!`);}
+  });
+}
+
+// ── TOAST ──
+function toast(msg,type='info'){
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div');el.className=`toast toast-${type}`;el.textContent=msg;
+  c.appendChild(el);setTimeout(()=>el.remove(),3400);
+}
 </script>
 </body>
 </html>
