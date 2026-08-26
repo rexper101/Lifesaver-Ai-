@@ -920,6 +920,11 @@ function checkDeadlines(){
   });
 }
 
+// ── TOAST ──
+function toast(msg,type='info'){
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div');el.className=`toast toast-${type}`;el.textContent=msg;
+  c.appendChild(el);setTimeout(()=>el.remove(),3400);
 }
 </script>
 </body>
