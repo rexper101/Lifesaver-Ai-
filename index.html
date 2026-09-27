@@ -905,13 +905,6 @@ function toggleVoice(){
   rec.start();
 }
 
-// ── NOTIFICATIONS ──
-function requestNotifPermission(){if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}
-function sendNotif(title,body){
-  if('Notification' in window&&Notification.permission==='granted')
-    new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚡</text></svg>'});
-}
-
 </script>
 </body>
 </html>
