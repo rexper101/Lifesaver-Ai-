@@ -787,13 +787,6 @@ function openForm(){
     if(f){f.classList.add('open');setTimeout(()=>document.getElementById('new-title')?.focus(),50);}
   },currentView!=='dashboard'?100:0);
 }
-function closeForm(){const f=document.getElementById('add-form');if(f)f.classList.remove('open');}
-function addTask(){
-  const title=document.getElementById('new-title')?.value.trim();if(!title){toast('Enter a task title','warn');return;}
-  const dl=document.getElementById('new-dl')?.value;
-  tasks.unshift({id:nextId++,title,priority:document.getElementById('new-priority').value,cat:document.getElementById('new-cat').value,deadline:dl?new Date(dl):tomorrow(),done:false,hint:''});
-  document.getElementById('new-title').value='';closeForm();saveTasks();renderView();toast('Task added ✓','success');
-}
 
 </script>
 </body>
