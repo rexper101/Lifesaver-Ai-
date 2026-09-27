@@ -873,21 +873,6 @@ async function aiPrioritize(){
   saveTasks();renderView();toast('✨ AI plan ready!','success');
 }
 
-async function askAIAbout(id){
-  const task=tasks.find(t=>t.id===id);if(!task)return;
-  if(!drawerOpen)toggleDrawer();
-  addMsgRow(`Help me complete: "${task.title}"`,true);
-  callAI(`Give 3 concrete steps to complete this task efficiently: "${task.title}" (${task.cat}, ${task.priority} priority, due ${new Date(task.deadline).toLocaleString()})`);
-}
-function quick(text){
-  if(!drawerOpen)toggleDrawer();addMsgRow(text,true);
-  const p=tasks.filter(t=>!t.done).map(t=>`- ${t.title} (${t.priority}, due ${new Date(t.deadline).toLocaleString()})`).join('\n');
-  callAI(text+(p?`\n\nMy tasks:\n${p}`:''));
-}
-function send(){
-  const el=document.getElementById('chat-in');const v=el.value.trim();if(!v)return;el.value='';
-  addMsgRow(v,true);
-
 </script>
 </body>
 </html>
