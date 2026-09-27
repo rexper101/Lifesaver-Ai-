@@ -912,15 +912,6 @@ function sendNotif(title,body){
     new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⚡</text></svg>'});
 }
 
-// ── DEADLINE CHECKER ──
-function checkDeadlines(){
-  tasks.filter(t=>!t.done).forEach(t=>{
-    const diff=(new Date(t.deadline)-now)/60000;
-    if(diff>0&&diff<30&&!t._warned){t._warned=true;toast(`⚠ "${t.title.slice(0,28)}..." in ${Math.round(diff)} min!`,'warn');sendNotif('Deadline Alert!',`"${t.title.slice(0,40)}" is due in ${Math.round(diff)} min!`);}
-  });
-}
-
-
 </script>
 </body>
 </html>
