@@ -780,13 +780,6 @@ function toggle(id){
 }
 function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);saveTasks();renderView();toast('Task removed','info');}
 function openForm(){
-  // ensure we're on dashboard
-  if(currentView!=='dashboard'&&currentView!=='all') setView('dashboard',document.querySelector('.nav-item'));
-  setTimeout(()=>{
-    const f=document.getElementById('add-form');
-    if(f){f.classList.add('open');setTimeout(()=>document.getElementById('new-title')?.focus(),50);}
-  },currentView!=='dashboard'?100:0);
-}
 
 </script>
 </body>
