@@ -887,23 +887,6 @@ function quick(text){
 function send(){
   const el=document.getElementById('chat-in');const v=el.value.trim();if(!v)return;el.value='';
   addMsgRow(v,true);
-  const p=tasks.filter(t=>!t.done).map(t=>`- ${t.title} (${t.priority})`).join('\n');
-  callAI(v+(p?`\n\nMy tasks:\n${p}`:''));
-}
-
-// ── VOICE ──
-function toggleVoice(){
-  const btn=document.getElementById('voice-btn');
-  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){toast('Voice not supported in this browser','warn');return;}
-  if(isListening){isListening=false;btn.classList.remove('listening');return;}
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  const rec=new SR();rec.lang='en-IN';
-  rec.onstart=()=>{isListening=true;btn.classList.add('listening');toast('🎤 Listening...','info');};
-  rec.onresult=e=>{document.getElementById('chat-in').value=e.results[0][0].transcript;isListening=false;btn.classList.remove('listening');};
-  rec.onerror=()=>{isListening=false;btn.classList.remove('listening');};
-  rec.onend=()=>{isListening=false;btn.classList.remove('listening');};
-  rec.start();
-}
 
 </script>
 </body>
