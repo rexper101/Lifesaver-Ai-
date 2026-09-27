@@ -771,15 +771,6 @@ function updateBadges(){
   document.getElementById('sb-streak').textContent=streak+'🔥';
 }
 
-// ── TASK ACTIONS ──
-function toggle(id){
-  const t=tasks.find(x=>x.id===id);if(!t)return;
-  t.done=!t.done;
-  if(t.done){streak++;localStorage.setItem('ls_streak',streak);toast(`✅ Done: "${t.title.slice(0,30)}"...`,'success');sendNotif('Task Complete!',`"${t.title.slice(0,40)}" ✓`);}
-  saveTasks();renderView();
-}
-function deleteTask(id){tasks=tasks.filter(x=>x.id!==id);saveTasks();renderView();toast('Task removed','info');}
-function openForm(){
 
 </script>
 </body>
