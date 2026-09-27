@@ -868,11 +868,7 @@ async function aiPrioritize(){
       addMsgRow(reply+'\n\n⚠️ (Showing demo — check your Gemini API key in Settings.)',false);
     }
   }
-  const lines=reply.split('\n').filter(l=>l.trim());
-  pending.slice(0,3).forEach((t,i)=>{if(lines[i])t.hint=lines[i].replace(/^\d+\.\s*/,'').slice(0,90);});
-  saveTasks();renderView();toast('✨ AI plan ready!','success');
-}
-
+ 
 </script>
 </body>
 </html>
