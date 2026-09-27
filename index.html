@@ -794,11 +794,6 @@ function addTask(){
   tasks.unshift({id:nextId++,title,priority:document.getElementById('new-priority').value,cat:document.getElementById('new-cat').value,deadline:dl?new Date(dl):tomorrow(),done:false,hint:''});
   document.getElementById('new-title').value='';closeForm();saveTasks();renderView();toast('Task added ✓','success');
 }
-function toggleHabit(i){
-  const el=document.getElementById('h'+i);const v=el.style.display==='none';
-  el.style.display=v?'inline-flex':'none';
-  if(v){streak++;localStorage.setItem('ls_streak',streak);updateBadges();toast('Habit done! 🔥','success');}
-}
 
 </script>
 </body>
